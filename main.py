@@ -14,6 +14,7 @@ from typing import List
 
 import pandas as pd
 from matplotlib import pyplot as plt
+from pandas import DataFrame
 from pdfminer.high_level import extract_pages, extract_text
 import tabula
 from datetime import datetime
@@ -101,7 +102,8 @@ if __name__ == '__main__':
     dates.sort()
     statements_by_date_pandas = dict()
     for valuation_date in dates:
-        solde = sum([s.balance for s in statements for a in accounts if s.account == a and s.valuation_date == valuation_date])
+        solde = sum(
+            [s.balance for s in statements for a in accounts if s.account == a and s.valuation_date == valuation_date])
         statement_num: int = list(set([s.num for s in statements if s.valuation_date == valuation_date]))[0]
         date_str = valuation_date.strftime("%d %B %Y")
         print(f'Relevé n°{statement_num} du {date_str:<20s}: {round(solde, 2)}')
@@ -124,16 +126,13 @@ if __name__ == '__main__':
         'Mois': dates,
         'Solde': [statements_by_date_pandas[d] for d in dates]
     }
-
     df = pd.DataFrame(data)
     # Ecriture données dans un fichier CSV avec Pandas (en 1 ligne!!)
     df.to_csv('donnees.csv', index=False)
-
     # Affichage sur une période donnée
     # date_debut = '2021-01-02'
     # date_fin = '2023-01-03'
     # donnees_periode = df[(df['Date'] >= date_debut) & (df['Date'] <= date_fin)]
-
     print(df)
 
     # Affichage avec matplot lib
@@ -146,11 +145,55 @@ if __name__ == '__main__':
     # plt.show()
 
     # Mode courbe financière
+
     plt.figure(figsize=(8, 4))
     plt.plot(df['Mois'], df['Solde'], marker='o', linestyle='-')
+    # plt.ylim(0, max(data['Solde']))
     plt.xlabel('Mois')
     plt.ylabel('Solde (en Euros)')
     plt.title('Évolution du solde au fil du temps')
     plt.grid(True)  # Afficher la grille en arrière-plan (facultatif)
     plt.savefig('graphique.png')
+    plt.show()
+
+    dataframes: List[DataFrame] = []
+    for account in accounts:
+        data_acct = {
+            'Mois': dates,
+            'Solde': [s.balance for d in dates for s in statements if s.account == account and s.valuation_date == d]
+        }
+        df: DataFrame = pd.DataFrame(data_acct)
+        dataframes.append(df)
+        csv_file: str = f'{account.type.name}.csv'
+        df.to_csv(csv_file, index=False)
+
+    # Créez une figure avec 2 lignes et 2 colonnes de sous-graphiques
+    fig, axs = plt.subplots(2, 2)
+
+    # Tracé dans chaque sous-graphique
+
+    # plt.plot(df['Mois'], df['Solde'], marker='o', linestyle='-')
+
+    x1, y1 = dataframes[0]['Mois'], dataframes[0]['Solde']
+    x2, y2 = dataframes[1]['Mois'], dataframes[1]['Solde']
+    x3, y3 = dataframes[2]['Mois'], dataframes[2]['Solde']
+    x4, y4 = dataframes[3]['Mois'], dataframes[3]['Solde']
+
+    axs[0, 0].plot(x1, y1, marker='o', linestyle='-')
+    axs[0, 1].plot(x2, y2, marker='o', linestyle='-')
+    axs[1, 0].plot(x3, y3, marker='o', linestyle='-')
+    axs[1, 1].plot(x4, y4, marker='o', linestyle='-')
+
+    plt.ylim(0, max(max(df['Solde']) for df in dataframes))
+
+    # axs[0, 1].scatter(x2, y2)
+    # axs[1, 0].bar(x3, y3)
+    # axs[1, 1].hist(x4, bins=10)
+
+    # Personnalisez chaque sous-graphique
+    axs[0, 0].set_title(accounts[0].type.name)
+    axs[0, 1].set_title(accounts[1].type.name)
+    axs[1, 0].set_title(accounts[2].type.name)
+    axs[1, 1].set_title(accounts[3].type.name)
+
     plt.show()
