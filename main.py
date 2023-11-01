@@ -3,13 +3,17 @@
 #
 # REf tutorial YouTube: https://www.youtube.com/watch?v=w2r2Bg42UPY
 #
+import csv
 import locale
 import mimetypes
 import os
 import re
 from dataclasses import dataclass
 from enum import Enum
+from typing import List
 
+import pandas as pd
+from matplotlib import pyplot as plt
 from pdfminer.high_level import extract_pages, extract_text
 import tabula
 from datetime import datetime
@@ -31,9 +35,12 @@ class Account:
 @dataclass
 class Statement:
     account: Account
-    date: datetime
-    value: float
+    valuation_date: datetime
+    balance: float
     num: int
+
+    def __repr__(self):
+        return f'Relevé n°{self.num} du {self.valuation_date.strftime("%d %B %Y")};{self.account.type};{self.balance}'
 
 
 # Press the green button in the gutter to run the script.
@@ -90,11 +97,58 @@ if __name__ == '__main__':
                 print(f"Directory: {entry.name}")
 
     # Affichage des soldes totaux de chaque relevé
-    dates = list(set([s.date for s in statements]))
+    dates = list(set([s.valuation_date for s in statements]))
     dates.sort()
-    for date in dates:
-        solde = sum([s.value for s in statements for a in accounts if s.account == a and s.date == date])
-        statement_num: int = list(set([s.num for s in statements if s.date == date]))[0]
-        date_str = date.strftime("%d %B %Y")
+    statements_by_date_pandas = dict()
+    for valuation_date in dates:
+        solde = sum([s.balance for s in statements for a in accounts if s.account == a and s.valuation_date == valuation_date])
+        statement_num: int = list(set([s.num for s in statements if s.valuation_date == valuation_date]))[0]
+        date_str = valuation_date.strftime("%d %B %Y")
         print(f'Relevé n°{statement_num} du {date_str:<20s}: {round(solde, 2)}')
+        statements_by_date_pandas[valuation_date] = solde
 
+    # Ouvrir le fichier CSV en mode écriture
+    with open('statements.csv', mode='w', newline='') as fichier_csv:
+        statements_csv = csv.writer(fichier_csv)
+
+        # Écrire les données ligne par ligne
+        headers = ["N° de relevé", "Date", "Type de compte", "Solde"]
+        statements_csv.writerow(headers)
+        for valuation_date in dates:
+            statements_by_date: List[Statement] = [s for s in statements if s.valuation_date == valuation_date]
+            for s in statements_by_date:
+                statements_csv.writerow([s.num, s.valuation_date.date(), s.account.type.name, s.balance])
+
+    # Affichage avec Pandas
+    data = {
+        'Mois': dates,
+        'Solde': [statements_by_date_pandas[d] for d in dates]
+    }
+
+    df = pd.DataFrame(data)
+
+    # Affichage sur une période donnée
+    # date_debut = '2021-01-02'
+    # date_fin = '2023-01-03'
+    # donnees_periode = df[(df['Date'] >= date_debut) & (df['Date'] <= date_fin)]
+
+    print(df)
+
+    # Affichage avec matplot lib
+    # Mode bâtons (moche)
+    # plt.figure(figsize=(8, 4))  # Ajustez la taille du graphique si nécessaire
+    # plt.bar(df['Mois'], df['Solde'])
+    # plt.xlabel('Mois')
+    # plt.ylabel('Solde')
+    # plt.title('Solde comptes par mois')
+    # plt.show()
+
+    # Mode courbe financière
+    plt.figure(figsize=(8, 4))
+    plt.plot(df['Mois'], df['Solde'], marker='o', linestyle='-')
+    plt.xlabel('Mois')
+    plt.ylabel('Solde (en Euros)')
+    plt.title('Évolution du solde au fil du temps')
+    plt.grid(True)  # Afficher la grille en arrière-plan (facultatif)
+    plt.savefig('graphique.png')
+    plt.show()
