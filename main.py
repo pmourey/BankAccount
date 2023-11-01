@@ -107,7 +107,7 @@ if __name__ == '__main__':
         print(f'Relevé n°{statement_num} du {date_str:<20s}: {round(solde, 2)}')
         statements_by_date_pandas[valuation_date] = solde
 
-    # Ouvrir le fichier CSV en mode écriture
+    # Ecriture données dans un fichier CSV avec module CSV
     with open('statements.csv', mode='w', newline='') as fichier_csv:
         statements_csv = csv.writer(fichier_csv)
 
@@ -126,6 +126,8 @@ if __name__ == '__main__':
     }
 
     df = pd.DataFrame(data)
+    # Ecriture données dans un fichier CSV avec Pandas (en 1 ligne!!)
+    df.to_csv('donnees.csv', index=False)
 
     # Affichage sur une période donnée
     # date_debut = '2021-01-02'
